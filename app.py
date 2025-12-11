@@ -82,6 +82,25 @@ def load_model():
 with st.spinner('Đang tải mô hình AI...'):
     inferencer = load_model()
 
+# --- HÀM TÌM KIẾM WEBCAM ---
+def get_webcams():
+    """Kiểm tra 5 cổng đầu tiên (0-4) để tìm camera."""
+    available_cams = []
+    # Kiểm tra 5 index đầu tiên (thường camera chỉ nằm trong khoảng 0-3)
+    for i in range(5): 
+        # Thử mở camera với backend DirectShow (tốt cho Windows/Camera ảo)
+        cap = cv2.VideoCapture(i, cv2.CAP_DSHOW) 
+        
+        # Nếu không dùng Windows, hoặc code trên lỗi, hãy thử dòng dưới (bỏ comment):
+        # cap = cv2.VideoCapture(i) 
+        
+        if cap.isOpened():
+            ret, _ = cap.read()
+            if ret:
+                available_cams.append(i)
+            cap.release()
+    return available_cams
+
 input_path = None
 if source_option == "Upload Video":
     uploaded_file = st.sidebar.file_uploader("Tải lên video...", type=['mp4', 'mov', 'avi'])
@@ -90,13 +109,25 @@ if source_option == "Upload Video":
         tfile.write(uploaded_file.read())
         input_path = tfile.name
 elif source_option == "Webcam":
-    input_path = 0
+    webcam_indices = get_webcams()
+    if webcam_indices:
+        # Tạo danh sách hiển thị
+        webcam_options = {f"Webcam {i}": i for i in webcam_indices}
+        
+        selected_key = st.sidebar.selectbox(
+            "Chọn Webcam:", 
+            list(webcam_options.keys())
+        )
+        input_path = webcam_options[selected_key]
+        st.sidebar.info(f"Đang sử dụng Webcam {input_path}")
+    else:
+        st.sidebar.error("Không tìm thấy webcam nào. Vui lòng kiểm tra kết nối.")
 
 start_button = st.sidebar.button("Bắt đầu Phân tích", type="primary")
 stop_button = st.sidebar.button("Dừng lại")
 
 if start_button and input_path is not None:
-    cap = cv2.VideoCapture(input_path)
+    cap = cv2.VideoCapture(input_path, cv2.CAP_DSHOW)
     
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
